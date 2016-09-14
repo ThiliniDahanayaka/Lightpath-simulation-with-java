@@ -3,11 +3,11 @@ import java.util.*;
 
 public class Link{
 	String dest;
-	int used;
+	int []list;
 
-	public Link(String d){
+	public Link(String d, int []list){
 		this.dest = d;
-		this.used = 0;
+		this.list = list;
 	}
 
 }

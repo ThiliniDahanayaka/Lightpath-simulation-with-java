@@ -4,11 +4,12 @@ import java.lang.*;
 
 public class Network{
 	//private int capacity;
+	private int tot = 0;
+	private  int done = 0;
 	private int wn;
 	private String []snodes;
 	private HashMap<String, Node> nodes;
 	private int nlinks;
-	private String route;
 
 	public Network(){
 		this.nodes = new HashMap<String, Node >();
@@ -23,70 +24,58 @@ public class Network{
 	private void init(Scanner console){
 		//System.out.println("System is ready to accept input, please enter capacity of a fiber : ");
 		//this.capacity = Integer.parseInt(console.nextLine());
+
 		System.out.println("Please enter no of wavelengths per fiber:");
 		this.wn = Integer.parseInt(console.nextLine());
+
 		System.out.println("Please enter nodes seperated by a '-':");
 		this.snodes = (console.nextLine()).split("-");
+
 		System.out.println("Please enter no of links:");
 		this.nlinks = Integer.parseInt(console.nextLine());
-
 		String []links = new String[this.nlinks];
-
 		System.out.println("Please enter the links:");
-
 		for(int i=0;i<this.nlinks;i++) links[i] = console.nextLine();
+
 		this.addNodes();
 		addlinks(links);
 
-
-
 		while(true){
+			tot++;
 			System.out.println("Please enter the source and destination seperated by a '-' :");
 			String []start = console.nextLine().split("-");
-			System.out.println("Please wait");
-			String ans = this.findPath(start[0], start[1]);
-			System.out.printf("%s",ans);
-			/*int ans = this.getLightpath();
+			int ans=-1;
+			String path;
+			path = this.findPath(start[0], start[1]);
+			if(!path.equals(start[0]+"-"+null)){
+				System.out.printf("Path assigned is %s\n",path);
+				ans = this.getLightpath(path);
+				done++;
+			}
 			if (ans<0)System.out.println("No route available.");
-			else System.out.printf("assigned lambda%d for the route.\n",ans);*/
+			else System.out.printf("assigned lambda%d for the route.\n",ans);
 			System.out.println("Have another route?");
 			if(console.nextLine().equals("N")) break;
 		}
 
+		System.out.printf("Percentage of blocked routes is %.2f\n",(float)(this.tot-this.done)/this.tot*100);
 
 	}
 
-	/*private int [] getlist(String a,ArrayList<Link> paths ){
-		int []list ;
-		for (int x=0; x<paths.size(); x++){//for each link originating from source
-			if(paths.get(x).dest.equals(a)){
-				list = paths.get(x).list;
-				return list;
-			}
-		}
-		return null;
-	}*/
-
-	/*private int getLightpath(){
+	private int getLightpath(String route){
 		boolean []used = new boolean[this.wn];
-		String []temp = this.route.split("-");
+		String []temp = route.split("-");
 		int lamda = -1;
-		for(int i=0;i<(temp.length-1);i++){ //for each step
+		for(int i=0;i<(temp.length-2);i++){ //for each step
 			String dest,source;
 			dest = temp[i+1]; source = temp[i];
 			int []list = null;
-			ArrayList<Link> paths = this.nodes.get(source);
-			if (paths!=null) list = getlist(dest,paths);
-
-			if(paths==null || list == null){
-					paths = this.nodes.get(dest);
-					if (paths==null) return  lamda;
-					list = getlist(source,paths);
-			}
-
+			HashMap<String, Link> paths = this.nodes.get(source).links;
+			//if (paths!=null) return lamda;
+			list = paths.get(dest).list;
 			if(list == null) return lamda; //if list is not null proceed, else no link
 
-			for(int j=0;j<(this.wn);j++){
+			for(int j=0;j<(this.wn);j++){//find out occupied wavelengths
 				if(list[j]==1) used[j]=true;
 			}
 		}
@@ -100,23 +89,21 @@ public class Network{
 
 		if(lamda == -1)			return lamda; //if no free lamda, return
 
-		for (int i = 0; i < (temp.length - 1); i++) {
-			ArrayList<Link> paths = this.nodes.get(temp[i]);
+		for (int i = 0; i < (temp.length - 2); i++) {
+			HashMap<String, Link> paths = this.nodes.get(temp[i]).links;
 			String s = temp[i + 1];
-			if (paths==null){
-				paths = this.nodes.get(temp[i+1]);
-				s = temp[i];
-			}
-			for (int x = 0; x < paths.size(); x++) {
-				if (paths.get(x).dest.equals(s)) {
-					paths.get(x).list[lamda] = 1;
-					break;
+			if(paths.containsKey(s)){
+				paths.get(s).list[lamda] = 1;
+				boolean full = true;
+				for(int m =0;m<this.wn;m++){
+					if(paths.get(s).list[m]==0)full =false;
 				}
+				if(full) paths.remove(s);
 			}
 		}
 
 		return lamda;
-	}*/
+	}
 
 	private void addlinks(String [] links){
 		Node n1 = null;
@@ -124,11 +111,15 @@ public class Network{
 			String [] temp = links[i].split("-");
 
 			//add links in both directions
-			Link l = new Link(temp[1]);
+			int []t = new int[this.wn];
+			for(int k=0;k<this.wn;k++)t[k] = 0;
+			Link l = new Link(temp[1],t);
 			n1 = this.nodes.get(temp[0]);
 			n1.links.put(temp[1],l);
 
-			l = new Link(temp[0]);
+			int []t2 = new int[this.wn];
+			for(int k=0;k<this.wn;k++)t2[k] = 0;
+			l = new Link(temp[0],t2);
 			n1 = this.nodes.get(temp[1]);
 			n1.links.put(temp[0],l);
 		}
@@ -141,16 +132,15 @@ public class Network{
 		}
 	}
 
+	//uses breadth first search
 	private String findPath(String s, String d){
 		Queue<Node> queue = new LinkedList<Node>();
 		Node n = null;
 		queue.add(this.nodes.get(s));
 		while (!queue.isEmpty()){
-			System.out.println("whhile..");
 			n = queue.remove();
-			if(n.name.equals(d)){System.out.println("break..");break;}
+			if(n.name.equals(d))break;
 			for (Map.Entry<String, Link> entry : n.links.entrySet()) {
-				//System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue());
 				Node dest = this.nodes.get(entry.getValue().dest);
 				if(dest.visited == 0){
 					dest.visited = 1;
@@ -160,11 +150,9 @@ public class Network{
 			}
 			n.visited = 2;
 		}
-		System.out.println("out of whhile..");
 		String path=null;
 		n = this.nodes.get(d);
 		while(n.prev!=null){
-			//System.out.println( n.name);
 			path = n.name + "-" + path;
 			n= this.nodes.get(n.prev);
 		}
@@ -175,7 +163,6 @@ public class Network{
 
 	private void printNodes(){
 		for (Map.Entry<String, Node> entry : this.nodes.entrySet()) {
-			//System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue());
 			Node f = entry.getValue();
 			for (Map.Entry<String, Link> entry1 : f.links.entrySet()) {
 				System.out.println(entry1.getKey() );
